@@ -22,16 +22,11 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
             {
                 Directory.CreateDirectory(Application.StartupPath + "\\images\\");
             }
-            try
-            {
-                CnblogsHelper.ExportToMarkdown(1, 4, true, "http://7xqdjc.com1.z0.glb.clouddn.com/blog_");
-            }
-            catch(Exception e)
-            {
-                Console.WriteLine(e.ToString());
-            }
+            
+                CnblogsHelper.ExportToMarkdown(19, 19, true);
+            
             Console.WriteLine("All the Articles are generated successfully!Press any key to quit..");
-            Console.ReadKey();
+            Console.Read();
         }
     }
 }
