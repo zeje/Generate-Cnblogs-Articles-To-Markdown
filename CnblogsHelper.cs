@@ -19,6 +19,7 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
         /// <summary>
         /// 导出博客园的文章成本地 Markdown 进行保存
         /// </summary>
+        /// <param name="accountname">博客账户名</param>
         /// <param name="pageStart">博客起始页码，即 http://www.cnblogs.com/pangguoming/default.html?page={0} </param>
         /// <param name="pageEnd">博客结束页码，即 http://www.cnblogs.com/pangguoming/default.html?page={0} </param>
         /// <param name="isSaveImage">是否将文章中的图片保存到本地，保存后文件夹在程序运行的 images 文件夹</param>
@@ -26,13 +27,13 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
         /// <param name="isAddMoreSeparateLine">在抓取到的文章 separateLineLocation（参数） 处添加<!--more-->分隔符，用于博客展示文章时用于抽取描述以及阅读更多使用。</param>
         /// <param name="separateLineLocation">添加分隔符的位置</param>
         /// <returns>是否执行完成</returns>
-        public static bool ExportToMarkdown(int pageStart, int pageEnd, bool isSaveImage, string imagePrefixUrl = "", bool isAddMoreSeparateLine = false, int separateLineLocation = 300)
+        public static bool ExportToMarkdown(string accountname,int pageStart, int pageEnd, bool isSaveImage, string imagePrefixUrl = "", bool isAddMoreSeparateLine = false, int separateLineLocation = 300)
         {
             for (var page = pageStart; page <= pageEnd; page++)
             {
                 try
                 {
-                    var pagesUrl = string.Format("http://www.cnblogs.com/pangguoming/default.html?page={0}", page);
+                    var pagesUrl = string.Format("http://www.cnblogs.com/"+ accountname + "/default.html?page={0}", page);
                     //抓取所有的文章内容链接地址，进行循环抓取并存储
                     var regex = new Regex(@"class=""postTitle"">\s+<a.*?href=""(?<href>.*?)"">",
                         RegexOptions.Singleline | RegexOptions.Multiline);

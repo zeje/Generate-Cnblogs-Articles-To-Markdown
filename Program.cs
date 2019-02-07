@@ -23,8 +23,9 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
                 Directory.CreateDirectory(Application.StartupPath + "\\images\\");
             }
             
-                CnblogsHelper.ExportToMarkdown(19, 19, true);
-            
+                CnblogsHelper.ExportToMarkdown("pangguoming",19, 20, true, "http://pangguoming.com/blog/images/");
+
+
             Console.WriteLine("All the Articles are generated successfully!Press any key to quit..");
             Console.Read();
         }
