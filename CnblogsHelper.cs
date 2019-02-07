@@ -40,6 +40,7 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
                     foreach (Match match in matches)
                     {
                         var articleUrl = match.Groups["href"].ToString();
+                        var articleId = articleUrl.Substring(articleUrl.LastIndexOf("/") + 1,8);
                         var regexArticle =
                             new Regex(
                                 @"id=""cb_post_title_url"".*?>(?<title>.*?)</a>.*?<div\s+id=""cnblogs_post_body"".*?>(?<articlecontent>.*?)</div><div\s+id=""MySignature""></div>.*?<span\s+id=""post-date"">(?<date>.*?)</span>",
@@ -60,7 +61,7 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
                             var articleContent = matchArticle.Groups["articlecontent"].ToString();
                             if (isSaveImage)
                             {
-                               // articleContent = ProcessArticleImage(articleContent, imagePrefixUrl); //对文章中的图片进行保存，根据情况可以不处理，如何有自己的图床，那么保存下来后替换掉图床前缀就可以了。
+                                articleContent = ProcessArticleImage(articleContent, articleId, imagePrefixUrl); //对文章中的图片进行保存，根据情况可以不处理，如何有自己的图床，那么保存下来后替换掉图床前缀就可以了。
                             }
 
                             articleContent = ProcessArticleCode(articleContent);
@@ -186,25 +187,31 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
             return strReturn;
         }
 
-        private static string ProcessArticleImage(string articleContent, string imagePrefixUrl = "")
+        private static string ProcessArticleImage(string articleContent,string articalId, string imagePrefixUrl = "")
         {
             var regex = new Regex(@"<img\s+src=""(?<src>.*?)""", RegexOptions.Singleline | RegexOptions.Multiline);
             var matches = regex.Matches(articleContent);
             var preImagePath = "";
+            var i = 1;
             foreach (Match match in matches)
             {
                 var imagePath = match.Groups["src"].ToString();
-                var imageName = imagePath.Substring(imagePath.LastIndexOf("/") + 1);
+                var suffix= imagePath.Substring(imagePath.Length-4);
+                if (".gif.jpg.png.GIF.JPG.PNG".IndexOf(suffix)==-1)
+                {
+                    suffix = ".jpg";
+                }
+                var imageName = articalId+"_"+ (i++) + suffix;
+
                 if (string.IsNullOrEmpty(preImagePath))
                 {
                     preImagePath = imagePath.Substring(0, imagePath.LastIndexOf("/") + 1);
                 }
                 NetworkHelper.SavePhotoFromUrl(Application.StartupPath + "\\images\\" + imageName, imagePath);
+
+                articleContent = articleContent.Replace(imagePath, imagePrefixUrl+ imageName); //自己的图床前缀
             }
-            if (matches.Count > 0 && !string.IsNullOrEmpty(imagePrefixUrl))
-            {
-                return articleContent.Replace(preImagePath, imagePrefixUrl); //自己的图床前缀
-            }
+
             return articleContent;
         }
 
