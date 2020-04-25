@@ -18,12 +18,12 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
                 Directory.CreateDirectory(Application.StartupPath + "\\output\\");
             }
 
-            if (!Directory.Exists(Application.StartupPath + "\\images\\"))
+            if (!Directory.Exists(Application.StartupPath + "\\output\\images\\"))
             {
-                Directory.CreateDirectory(Application.StartupPath + "\\images\\");
+                Directory.CreateDirectory(Application.StartupPath + "\\output\\images\\");
             }
-            
-                CnblogsHelper.ExportToMarkdown("pangguoming",19, 20, true, "http://pangguoming.com/blog/images/");
+
+            CnblogsHelper.ExportToMarkdown("william-xu", 1, 11, true, "images/");
 
 
             Console.WriteLine("All the Articles are generated successfully!Press any key to quit..");

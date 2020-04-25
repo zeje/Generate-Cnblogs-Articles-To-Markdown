@@ -16,6 +16,9 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
 
         public const string mCodeblockBegin = "{% codeblock lang:csharp%}";
         public const string mCodeblockEnd = "{% endcodeblock %}";
+
+        public Dictionary<string, string> dicUrl = new Dictionary<string, string>();
+
         /// <summary>
         /// 导出博客园的文章成本地 Markdown 进行保存
         /// </summary>
@@ -27,13 +30,14 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
         /// <param name="isAddMoreSeparateLine">在抓取到的文章 separateLineLocation（参数） 处添加<!--more-->分隔符，用于博客展示文章时用于抽取描述以及阅读更多使用。</param>
         /// <param name="separateLineLocation">添加分隔符的位置</param>
         /// <returns>是否执行完成</returns>
-        public static bool ExportToMarkdown(string accountname,int pageStart, int pageEnd, bool isSaveImage, string imagePrefixUrl = "", bool isAddMoreSeparateLine = false, int separateLineLocation = 300)
+        public static bool ExportToMarkdown(string accountname, int pageStart, int pageEnd, bool isSaveImage, string imagePrefixUrl = "", bool isAddMoreSeparateLine = false, int separateLineLocation = 300)
         {
+
             for (var page = pageStart; page <= pageEnd; page++)
             {
                 try
                 {
-                    var pagesUrl = string.Format("http://www.cnblogs.com/"+ accountname + "/default.html?page={0}", page);
+                    var pagesUrl = string.Format("http://www.cnblogs.com/" + accountname + "/default.html?page={0}", page);
                     //抓取所有的文章内容链接地址，进行循环抓取并存储
                     var regex = new Regex(@"class=""postTitle"">\s+<a.*?href=""(?<href>.*?)"">",
                         RegexOptions.Singleline | RegexOptions.Multiline);
@@ -41,13 +45,14 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
                     foreach (Match match in matches)
                     {
                         var articleUrl = match.Groups["href"].ToString();
-                        var articleId = articleUrl.Substring(articleUrl.LastIndexOf("/") + 1,8);
+
+                        var articleId = articleUrl.Substring(articleUrl.LastIndexOf("/") + 1, 8);
                         var regexArticle =
                             new Regex(
-                                @"id=""cb_post_title_url"".*?>(?<title>.*?)</a>.*?<div\s+id=""cnblogs_post_body"".*?>(?<articlecontent>.*?)</div><div\s+id=""MySignature""></div>.*?<span\s+id=""post-date"">(?<date>.*?)</span>",
+                                @"id=""cb_post_title_url"".*?>(?<title>.*?)</a>.*?<div\s+id=""cnblogs_post_body"".*?>(?<articlecontent>.*?)</div>.*?<div\s+id=""MySignature""></div>.*?<span\s+id=""post-date"">(?<date>.*?)</span>",
                                 RegexOptions.Singleline | RegexOptions.Multiline);
                         var content = NetworkHelper.GetHtmlFromGet(articleUrl, Encoding.UTF8);
-                        var regexAppName = new Regex("currentBlogApp='(?<appName>.*?)'", RegexOptions.Singleline | RegexOptions.Multiline);
+                        var regexAppName = new Regex(@"currentBlogApp\s*=\s*'(?<appName>.*?)'", RegexOptions.Singleline | RegexOptions.Multiline);
                         var matchAppName = regexAppName.Match(content);
                         var appName = string.Empty;
                         if (matchAppName.Success)
@@ -66,10 +71,15 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
                             }
 
                             articleContent = ProcessArticleCode(articleContent);
-                            articleContent = articleContent.Replace("<div class=\"cnblogs_Highlighter\">", "```")
-                                .Replace("</pre>", "```"); //博客标记的特殊处理
+                            articleContent = ProcessArticlePre(articleContent);
 
-                            var regexId = new Regex(@"cb_blogId=(?<blogid>\d+),cb_entryId=(?<entryid>\d+)",
+                            if (imagePrefixUrl == "images/")
+                            {
+                                articleContent = ProcessArticleSelfUrl(accountname, articleContent);
+                            }
+
+
+                            var regexId = new Regex(@"\s+cb_blogId\s*=\s*(?<blogid>\d+)\s*,[\s\S]*\s+cb_entryId\s*=\s*(?<entryid>\d+)",
                                 RegexOptions.Singleline | RegexOptions.Multiline);
                             int blogId = 0, postId = 0;
                             var matchId = regexId.Match(content);
@@ -79,43 +89,59 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
                                 int.TryParse(matchId.Groups["entryid"].ToString(), out postId);
                             }
 
-                            var categoryTags = GetArticleCategory(appName, blogId, postId);
+                            var categoryTags = "zeje"; //GetArticleCategory(appName, blogId, postId);
                             var fileName = GetFileName(title, date);
                             var filePath = Application.StartupPath + "\\output\\" + fileName;
-                            var mdContent = string.Format("---\r\ntitle: {0}\r\ndate: {1}\r\n{2}\r\n\r\n---\r\n{3}", title, date,
-                                categoryTags, articleContent);
+                            var mdContent = string.Format("---\r\ntitle: {0}\r\ndate: {1}\r\n{2}\r\n\r\n---\r\n{3}", title, date, categoryTags, articleContent);
+
+
                             var converter = new Converter();
-                            var markdown = converter.Convert(mdContent);
-                            int tmpseparateLineLocation = separateLineLocation;
-                            //注意此处的作用是在抓取到的文章 300 字符处添加<!--more-->分隔符，用于博客展示文章时用于抽取描述以及阅读更多使用。                       
-                            if (isAddMoreSeparateLine && markdown.Length > (separateLineLocation + 1))
+                            try
                             {
-                                int indexb = 0, indexe = 0;
-                                while (indexe < separateLineLocation)
+                                var markdown = converter.Convert(mdContent);
+                                int tmpseparateLineLocation = separateLineLocation;
+                                //注意此处的作用是在抓取到的文章 300 字符处添加<!--more-->分隔符，用于博客展示文章时用于抽取描述以及阅读更多使用。                       
+                                if (isAddMoreSeparateLine && markdown.Length > (separateLineLocation + 1))
                                 {
-                                    indexb = markdown.IndexOf(mCodeblockBegin, indexe);
-                                    if (indexb == -1)
+                                    int indexb = 0, indexe = 0;
+                                    while (indexe < separateLineLocation)
                                     {
-                                        break;//there are no codes in the arcticle.
+                                        indexb = markdown.IndexOf(mCodeblockBegin, indexe);
+                                        if (indexb == -1)
+                                        {
+                                            break;//there are no codes in the arcticle.
+                                        }
+                                        indexe = markdown.IndexOf(mCodeblockEnd, indexb);
+                                        //if the code block is truncated,adjust the separateLineLocation
+                                        if ((indexb <= separateLineLocation && separateLineLocation <= indexb + mCodeblockBegin.Length)
+                                            || (indexe <= separateLineLocation && separateLineLocation <= indexe + mCodeblockEnd.Length))
+                                        {
+                                            separateLineLocation = indexe + mCodeblockEnd.Length;
+                                            break;
+                                        }
                                     }
-                                    indexe = markdown.IndexOf(mCodeblockEnd, indexb);
-                                    //if the code block is truncated,adjust the separateLineLocation
-                                    if ((indexb <= separateLineLocation && separateLineLocation <= indexb + mCodeblockBegin.Length)
-                                        || (indexe <= separateLineLocation && separateLineLocation <= indexe + mCodeblockEnd.Length))
-                                    {
-                                        separateLineLocation = indexe + mCodeblockEnd.Length;
-                                        break;
-                                    }
+                                    markdown = markdown.Substring(0, separateLineLocation) + "\r\n<!--more-->\r\n" +
+                                               markdown.Substring(separateLineLocation + 1);
+                                    separateLineLocation = tmpseparateLineLocation;
                                 }
-                                markdown = markdown.Substring(0, separateLineLocation) + "\r\n<!--more-->\r\n" +
-                                           markdown.Substring(separateLineLocation + 1);
-                                separateLineLocation = tmpseparateLineLocation;
+                                markdown = markdown.Replace("{% codeblock lang:csharp%}", "```")
+                                    .Replace("{% endcodeblock %}", "```");
+                                using (var streamWriter = new StreamWriter(filePath))
+                                {
+                                    streamWriter.Write(markdown);
+                                    streamWriter.Close();
+                                }
                             }
-                            markdown = markdown.Replace("{% codeblock lang:csharp%}", "```")
-                                .Replace("{% endcodeblock %}", "```");
-                            var streamWriter = new StreamWriter(filePath);
-                            streamWriter.Write(markdown);
-                            streamWriter.Close();
+                            catch (Exception ex)
+                            {
+                                articleContent = articleContent.Replace("{% codeblock lang:csharp%}", "```")
+                                    .Replace("{% endcodeblock %}", "```");
+                                using (var streamWriter = new StreamWriter(filePath + ".html"))
+                                {
+                                    streamWriter.Write(articleContent);
+                                    streamWriter.Close();
+                                }
+                            }
                             Console.WriteLine(fileName + " have been generated..");
                         }
                     }
@@ -128,6 +154,8 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
             }
             return true;
         }
+
+
 
 
         #region 元素抓取
@@ -188,7 +216,7 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
             return strReturn;
         }
 
-        private static string ProcessArticleImage(string articleContent,string articalId, string imagePrefixUrl = "")
+        private static string ProcessArticleImage(string articleContent, string articalId, string imagePrefixUrl = "")
         {
             var regex = new Regex(@"<img\s+src=""(?<src>.*?)""", RegexOptions.Singleline | RegexOptions.Multiline);
             var matches = regex.Matches(articleContent);
@@ -197,20 +225,21 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
             foreach (Match match in matches)
             {
                 var imagePath = match.Groups["src"].ToString();
-                var suffix= imagePath.Substring(imagePath.Length-4);
-                if (".gif.jpg.png.GIF.JPG.PNG".IndexOf(suffix)==-1)
+                var suffix = imagePath.Substring(imagePath.Length - 4);
+                if (".gif.jpg.png.GIF.JPG.PNG".IndexOf(suffix) == -1)
                 {
                     suffix = ".jpg";
                 }
-                var imageName = articalId+"_"+ (i++) + suffix;
+                var imageName = articalId + "_" + (i++) + suffix;
 
                 if (string.IsNullOrEmpty(preImagePath))
                 {
                     preImagePath = imagePath.Substring(0, imagePath.LastIndexOf("/") + 1);
                 }
-                NetworkHelper.SavePhotoFromUrl(Application.StartupPath + "\\images\\" + imageName, imagePath);
 
-                articleContent = articleContent.Replace(imagePath, imagePrefixUrl+ imageName); //自己的图床前缀
+                NetworkHelper.SavePhotoFromUrl(Application.StartupPath + "\\output\\images\\" + imageName, imagePath);
+
+                articleContent = articleContent.Replace(imagePath, imagePrefixUrl + imageName); //自己的图床前缀
             }
 
             return articleContent;
@@ -241,6 +270,24 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
                         .Replace("</div>", string.Empty);
         }
 
+
+        private static string ProcessArticlePre(string articleContent)
+        {
+
+            articleContent = articleContent.Replace("<br>", "\r\n");
+
+            articleContent = Regex.Replace(articleContent, @"<pre>[\s\S]*<code\s+class\s*=\s*""language-csharp""\s*>(?<code>[\s\S]*?)</code>\s*</pre>", "``` csharp\r\n${code}\r\n```", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+            articleContent = Regex.Replace(articleContent, @"<pre>[\s\S]*<code\s+class\s*=\s*""[\s\S]*"">(?<code>[\s\S]*?)</code>\s*</pre>", "```\r\n${code}\r\n```", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+            articleContent = Regex.Replace(articleContent, @"<pre>[\s\S]*<code>(?<code>[\s\S]*?)</code>\s*</pre>", "```\r\n${code}\r\n```", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+            articleContent = Regex.Replace(articleContent, @"<code>(?<code>[\s\S]*?)</code>", "```\r\n${code}\r\n```", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+            return articleContent;
+        }
+
+        private static string ProcessArticleSelfUrl(string accountname, string articleContent)
+        {
+            //articleContent = Regex.Replace(articleContent, @"[a-zA-Z]+://(?<websit>.*?)/p/(?<title>.*?).html", "${title}.md");
+            return articleContent;
+        }
         #endregion
     }
 }
